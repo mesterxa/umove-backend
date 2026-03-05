@@ -6,21 +6,55 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
+import { LanguageProvider } from "@/context/LanguageContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 SplashScreen.preventAutoHideAsync();
 
+function AuthRedirect() {
+  const { user, profile, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user || !profile) return;
+    if (profile.needsTruckSetup) {
+      router.replace("/partner-setup");
+      return;
+    }
+    if (profile.role === "partner") {
+      router.replace("/partner-dashboard");
+    } else if (profile.role === "admin") {
+      router.replace("/dashboard");
+    } else {
+      router.replace("/dashboard");
+    }
+  }, [user, profile, loading]);
+
+  return null;
+}
+
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-    </Stack>
+    <>
+      <AuthRedirect />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="partner-setup" />
+        <Stack.Screen name="dashboard" />
+        <Stack.Screen name="partner-dashboard" />
+        <Stack.Screen name="admin" />
+        <Stack.Screen name="settings" />
+      </Stack>
+    </>
   );
 }
 
@@ -45,7 +79,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
-            <RootLayoutNav />
+            <LanguageProvider>
+              <AuthProvider>
+                <RootLayoutNav />
+              </AuthProvider>
+            </LanguageProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
       </QueryClientProvider>

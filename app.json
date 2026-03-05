@@ -19,6 +19,7 @@
     },
     "android": {
       "package": "com.umoveannaba",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0A3D8F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
