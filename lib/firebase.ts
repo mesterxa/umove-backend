@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 import { Platform } from "react-native";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC6kRqUwdZ3s05erR8GYEoMznSEkayU2c8",
+  apiKey: "AIzaSyBoTN26ZkMIDGnmlHU-qY_egHHuwJs9tIQ",
   authDomain: "umove-annaba.firebaseapp.com",
   projectId: "umove-annaba",
-  storageBucket: "umove-annaba.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:0000000000000000000000",
+  storageBucket: "umove-annaba.firebasestorage.app",
+  messagingSenderId: "771075643005",
+  appId: "1:771075643005:web:ffdb5f08a27f0190dac314",
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];

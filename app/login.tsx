@@ -270,8 +270,11 @@ function AuthField({
 }
 
 function getAuthErrorMessage(msg: string, t: { authError: string }): string {
+  if (msg.includes("unauthorized-domain")) {
+    return "النطاق غير مرخص. أضف نطاق Replit في Firebase Console → Authentication → Settings → Authorized Domains";
+  }
   if (msg === "timeout") {
-    return "انتهت مهلة الاتصال. تأكد من تفعيل Firebase Auth في Console / Délai expiré. Vérifiez Firebase Console";
+    return "انتهت مهلة الاتصال. أضف نطاق Replit في Firebase Console → Authentication → Settings → Authorized Domains";
   }
   if (msg.includes("invalid-credential") || msg.includes("wrong-password") || msg.includes("user-not-found")) {
     return "البريد الإلكتروني أو كلمة المرور غير صحيحة / Email ou mot de passe incorrect";

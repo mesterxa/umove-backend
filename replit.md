@@ -1,75 +1,113 @@
-# UMOVE ANNABA - Replit Configuration
+# UMOVE ANNABA — Project Configuration
 
 ## Overview
 
-UMOVE ANNABA is a mobile-first moving/relocation services app for the Annaba region (Algeria). It allows users to request residential moving, office moving, and furniture assembly services. The app is built with Expo (React Native) for the mobile frontend and an Express.js backend, designed to run together on Replit.
+UMOVE ANNABA is a professional mobile-first logistics/moving app for the Annaba region (Algeria). Built with Expo (React Native) + Express.js backend. Features Firebase Auth + Firestore for data persistence, multi-role access (Client / Partner / Admin), and a full multi-language system (Arabic RTL default, French, English).
 
-The app presents service options in French, collects booking requests, and is styled with the UMOVE brand colors (deep blue #0A3D8F and orange #F47A20).
+## Brand
+- Primary Blue: `#0A3D8F`
+- Primary Orange: `#F47A20`
+- Company: UMOVE ANNABA (Moving startup, Annaba, Algeria)
 
 ## User Preferences
+- Communication: Simple, everyday language
+- Admin email: `mening25071999@gmail.com`
 
-Preferred communication style: Simple, everyday language.
+---
 
 ## System Architecture
 
 ### Frontend (Mobile App)
-- **Framework**: Expo (React Native) with expo-router for file-based navigation
-- **Entry point**: `app/index.tsx` — single-page landing with service selection UI
-- **Routing**: File-based routing via expo-router; currently only one main screen (`/`)
-- **State/Data fetching**: TanStack React Query (`@tanstack/react-query`) with a custom `queryClient` in `lib/query-client.ts`
-- **Fonts**: Inter font family (400, 500, 600, 700) loaded via `@expo-google-fonts/inter`
-- **UI Libraries**: 
-  - `expo-linear-gradient` for gradient backgrounds
-  - `expo-haptics` for tactile feedback
-  - `@expo/vector-icons` (Ionicons, MaterialCommunityIcons, FontAwesome5)
-  - `react-native-gesture-handler` and `react-native-reanimated` for animations
-  - `react-native-safe-area-context` for safe area handling
-  - `react-native-keyboard-controller` for keyboard-aware layouts
-- **Error handling**: Custom `ErrorBoundary` and `ErrorFallback` components wrapping the entire app
-- **Brand colors**: Defined in `constants/colors.ts` — blue (`#0A3D8F`), orange (`#F47A20`)
+- **Framework**: Expo SDK ~54 (React Native) with `expo-router` file-based navigation
+- **State Management**: React Context (Auth + Language), TanStack React Query for API calls
+- **Firebase**: JS SDK v9+ — Auth (Email/Password) + Firestore
+- **i18n**: Custom `lib/i18n.ts` — Arabic (RTL default), French, English; stored in AsyncStorage
+- **RTL**: `I18nManager.forceRTL()` with `reloadAppAsync()` on language change
+- **Navigation**: Stack only (no tabs). All screens use `headerShown: false`
+- **Fonts**: Inter (400, 500, 600, 700) via `@expo-google-fonts/inter`
+
+### App Screens
+| Route | Description |
+|---|---|
+| `/` | Public landing page — hero, services, stats, "Why Us", quote form, "Be a Partner" CTA |
+| `/login` | Firebase Email/Password login |
+| `/signup` | Role selector (Client / Partner) + registration form |
+| `/partner-setup` | Truck type + license plate form (Partners only, first-time) |
+| `/dashboard` | Client dashboard + admin shortcut banner (if admin email) |
+| `/partner-dashboard` | Live orders feed for partners (Firestore `onSnapshot`) |
+| `/admin` | Admin-only panel: tabs for Orders / Users / Partners |
+| `/settings` | Profile info, language switcher (AR/FR/EN), logout |
+
+### Firebase Configuration (`lib/firebase.ts`)
+```
+apiKey: "AIzaSyBoTN26ZkMIDGnmlHU-qY_egHHuwJs9tIQ"
+authDomain: "umove-annaba.firebaseapp.com"
+projectId: "umove-annaba"
+storageBucket: "umove-annaba.firebasestorage.app"
+messagingSenderId: "771075643005"
+appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
+```
+
+### Firestore Collections
+- `users/{uid}` — uid, email, name, phone, role (client|partner|admin), needsTruckSetup, createdAt
+- `partners/{uid}` — uid, truckType, licensePlate, status
+- `orders/{id}` — name, phone, pickup, delivery, status (pending), clientId, createdAt
+
+### Auth Routing (AuthContext + _layout.tsx)
+- `AuthRedirect` component auto-routes authenticated users to their correct dashboard
+- Partners with `needsTruckSetup: true` → redirected to `/partner-setup`
+- Admin email `mening25071999@gmail.com` always gets `role: "admin"`
 
 ### Backend (Express API)
 - **Framework**: Express.js 5 (`server/index.ts`)
-- **API routes**: Defined in `server/routes.ts` — currently a placeholder; all routes should be prefixed with `/api`
-- **Storage layer**: `server/storage.ts` provides an `IStorage` interface with an in-memory `MemStorage` implementation (for development/prototype); can be swapped for a database-backed implementation
-- **CORS**: Custom CORS middleware that allows Replit dev/deployment domains and localhost origins
-- **Static serving**: Has a landing page HTML template (`server/templates/landing-page.html`) served for web visitors
+- **Port**: 5000 — serves API + landing page HTML (`server/templates/landing-page.html`)
+- **CORS**: Configured for Replit dev/deployment domains
 
-### Database
-- **ORM**: Drizzle ORM with PostgreSQL dialect
-- **Schema**: `shared/schema.ts` — currently defines a `users` table with `id`, `username`, and `password` fields
-- **Validation**: `drizzle-zod` generates Zod schemas from Drizzle table definitions
-- **Config**: `drizzle.config.ts` reads `DATABASE_URL` from environment; migrations output to `./migrations`
-- **Note**: The storage layer currently uses in-memory storage (`MemStorage`). The database schema is defined and ready; a Postgres-backed storage class needs to be implemented to replace `MemStorage`.
+---
 
-### Shared Code
-- `shared/schema.ts` is shared between the frontend and backend via the `@shared/*` path alias in `tsconfig.json`
+## Firebase Console Setup Required
 
-### Build & Deployment
-- **Dev mode**: Two processes run together — `expo:dev` (Metro bundler) and `server:dev` (Express with tsx)
-- **Production build**: `scripts/build.js` handles static Expo export; Express serves the built assets
-- **Environment variables**: `EXPO_PUBLIC_DOMAIN` is used by the frontend to construct API URLs; `REPLIT_DEV_DOMAIN` and `REPLIT_INTERNAL_APP_DOMAIN` are used for Replit-specific URL resolution
+### 1. ✅ Email/Password Auth — ENABLED
+### 2. ✅ Firestore Database — ENABLED
 
-## External Dependencies
+### 3. Add Authorized Domain for web browser auth
+Firebase Auth restricts which domains can trigger auth. You must add your Replit dev domain:
+- **Firebase Console** → Authentication → Settings → **Authorized Domains**
+- Add: `7c76c8de-1de7-4b39-9ea5-c47fedb91e31-00-23vw3t2mk61rm.worf.replit.dev`
+- Also add your deployed `.replit.app` domain once you publish
 
-| Dependency | Purpose |
-|---|---|
-| PostgreSQL (via `pg`) | Primary database; connected via `DATABASE_URL` env variable |
-| Drizzle ORM + drizzle-kit | Database schema management and migrations |
-| Expo SDK (~54) | Mobile app runtime and native APIs |
-| expo-router (~6) | File-based navigation for React Native |
-| TanStack React Query (^5) | Server state management and API data fetching |
-| Express.js (^5) | Backend HTTP server |
-| Inter Font (`@expo-google-fonts/inter`) | Typography |
-| AsyncStorage (`@react-native-async-storage/async-storage`) | Local persistent storage on device |
-| expo-location | Location services (imported, for future use) |
-| expo-image-picker | Camera/gallery access (imported, for future use) |
-| react-native-reanimated | Smooth animations |
-| react-native-gesture-handler | Touch gesture support |
-| Zod | Runtime schema validation |
+> **Note**: Auth works natively on physical device via Expo Go without this step. This only affects web browser testing.
 
-### Environment Variables Required
-- `DATABASE_URL` — PostgreSQL connection string (required for backend database operations)
-- `EXPO_PUBLIC_DOMAIN` — The domain where the Express API is served (set automatically by Replit dev scripts)
-- `REPLIT_DEV_DOMAIN` — Set automatically by Replit in development
-- `REPLIT_DOMAINS` — Set automatically by Replit for deployed domains
+### 4. Recommended Firestore Security Rules
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /orders/{id} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+    match /users/{uid} {
+      allow read, write: if request.auth.uid == uid;
+    }
+    match /partners/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == uid;
+    }
+  }
+}
+```
+
+---
+
+## Development Workflows
+- **Start Backend**: `npm run server:dev` — Express on port 5000
+- **Start Frontend**: `npm run expo:dev` — Metro bundler + Expo on port 8081
+
+## Key Files
+- `lib/firebase.ts` — Firebase app, auth, Firestore initialization
+- `lib/i18n.ts` — All translations (AR/FR/EN) + language helpers
+- `context/AuthContext.tsx` — Auth state, login/register/logout
+- `context/LanguageContext.tsx` — Language state + RTL switching
+- `constants/colors.ts` — Brand color palette
+- `app/_layout.tsx` — Root layout, providers, AuthRedirect

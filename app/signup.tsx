@@ -85,8 +85,10 @@ export default function SignupScreen() {
         setError("خطأ في الاتصال بالشبكة / Erreur réseau");
       } else if (code.includes("auth/operation-not-allowed") || msg.includes("operation-not-allowed")) {
         setError("يجب تفعيل المصادقة في Firebase Console / Activez l'authentification dans Firebase Console");
+      } else if (code.includes("auth/unauthorized-domain") || msg.includes("unauthorized-domain")) {
+        setError("النطاق غير مرخص. أضف نطاق Replit في Firebase Console → Auth → Settings → Authorized Domains");
       } else if (msg === "timeout") {
-        setError("انتهت مهلة الاتصال. تأكد من تفعيل Firebase Auth / Délai expiré. Vérifiez Firebase Console");
+        setError("انتهت مهلة الاتصال. أضف نطاق Replit في Firebase Console → Authentication → Settings → Authorized Domains");
       } else {
         setError(msg || t.authError);
       }
