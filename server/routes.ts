@@ -1,9 +1,18 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // put application routes here
-  // prefix all routes with /api
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/admin-portal", (_req: Request, res: Response) => {
+    res.json({
+      status: "ok",
+      message: "UMOVE ANNABA Admin Portal",
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   const httpServer = createServer(app);
 

@@ -11,7 +11,8 @@
     "server:build": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=server_dist",
     "server:prod": "NODE_ENV=production node server_dist/index.js",
     "db:push": "drizzle-kit push",
-    "start": "npx expo start",
+    "build": "npm run server:build",
+    "start": "NODE_ENV=production node server_dist/index.js",
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix"
   },
@@ -43,6 +44,7 @@
     "expo-web-browser": "~15.0.10",
     "express": "^5.0.1",
     "firebase": "^12.10.0",
+    "firebase-admin": "^13.7.0",
     "http-proxy-middleware": "^3.0.5",
     "pg": "^8.16.3",
     "react": "19.1.0",

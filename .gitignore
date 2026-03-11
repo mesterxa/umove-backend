@@ -39,3 +39,12 @@ yarn-error.*
 .vercel
 
 .env
+
+# Firebase service account keys (never commit these)
+*-service-account*.json
+*serviceAccount*.json
+*service_account*.json
+umove-annaba-*.json
+
+# Build output
+server_dist/
