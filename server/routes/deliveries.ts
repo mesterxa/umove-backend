@@ -129,7 +129,7 @@ router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res:
 // Supports full state machine: searching → accepted → arrived → in_transit → completed
 router.patch("/:id", requireApiKey, requireApprovedPartner, async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const parsed = UpdateOrderStatusSchema.safeParse(req.body);
 
     if (!parsed.success) {

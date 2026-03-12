@@ -112,6 +112,33 @@ export type Translations = {
   inactive: string;
   home: string;
   settings: string;
+  availableOrders: string;
+  noAvailableOrders: string;
+  noAvailableOrdersDesc: string;
+  acceptOrder: string;
+  accepting: string;
+  orderAccepted: string;
+  statusSearching: string;
+  statusAccepted: string;
+  statusArrived: string;
+  statusInTransit: string;
+  kmAway: string;
+  dzd: string;
+  cash: string;
+  card: string;
+  mobilePayment: string;
+  pendingApproval: string;
+  pendingApprovalDesc: string;
+  locationPermDenied: string;
+  myActiveOrders: string;
+  noActiveOrders: string;
+  markArrived: string;
+  startDelivery: string;
+  markComplete: string;
+  estimatedPrice: string;
+  paymentMethod: string;
+  pullToRefresh: string;
+  autoRefresh: string;
 };
 
 const ar: Translations = {
@@ -226,6 +253,33 @@ const ar: Translations = {
   inactive: "غير نشط",
   home: "الرئيسية",
   settings: "الإعدادات",
+  availableOrders: "الطلبات المتاحة",
+  noAvailableOrders: "لا توجد طلبات متاحة",
+  noAvailableOrdersDesc: "لا توجد طلبات بالقرب منك الآن. ستُحدَّث القائمة تلقائياً.",
+  acceptOrder: "قبول الطلب",
+  accepting: "جاري القبول...",
+  orderAccepted: "تم قبول الطلب!",
+  statusSearching: "يبحث عن سائق",
+  statusAccepted: "مقبول",
+  statusArrived: "في موقع الاستلام",
+  statusInTransit: "جاري النقل",
+  kmAway: "كم",
+  dzd: "د.ج",
+  cash: "نقداً",
+  card: "بطاقة",
+  mobilePayment: "دفع هاتفي",
+  pendingApproval: "الحساب قيد المراجعة",
+  pendingApprovalDesc: "حسابك كشريك قيد المراجعة من قبل الإدارة. ستتمكن من رؤية الطلبات بمجرد الموافقة.",
+  locationPermDenied: "يُرجى السماح بالوصول إلى موقعك لرؤية الطلبات الأقرب إليك.",
+  myActiveOrders: "طلباتي النشطة",
+  noActiveOrders: "لا توجد طلبات نشطة حالياً",
+  markArrived: "وصلت لموقع الاستلام",
+  startDelivery: "بدء التوصيل",
+  markComplete: "إتمام التسليم",
+  estimatedPrice: "السعر التقديري",
+  paymentMethod: "طريقة الدفع",
+  pullToRefresh: "اسحب للتحديث",
+  autoRefresh: "تحديث تلقائي كل 20 ثانية",
 };
 
 const fr: Translations = {
@@ -340,6 +394,33 @@ const fr: Translations = {
   inactive: "Inactif",
   home: "Accueil",
   settings: "Paramètres",
+  availableOrders: "Commandes disponibles",
+  noAvailableOrders: "Aucune commande disponible",
+  noAvailableOrdersDesc: "Aucune commande près de vous pour l'instant. La liste se met à jour automatiquement.",
+  acceptOrder: "Accepter la commande",
+  accepting: "Acceptation...",
+  orderAccepted: "Commande acceptée !",
+  statusSearching: "Recherche chauffeur",
+  statusAccepted: "Acceptée",
+  statusArrived: "Sur place",
+  statusInTransit: "En transit",
+  kmAway: "km",
+  dzd: "DA",
+  cash: "Espèces",
+  card: "Carte",
+  mobilePayment: "Paiement mobile",
+  pendingApproval: "Compte en attente",
+  pendingApprovalDesc: "Votre compte partenaire est en cours de vérification par l'administration. Vous verrez les commandes dès approbation.",
+  locationPermDenied: "Autorisez l'accès à votre position pour voir les commandes les plus proches.",
+  myActiveOrders: "Mes commandes actives",
+  noActiveOrders: "Aucune commande active en ce moment",
+  markArrived: "Je suis arrivé",
+  startDelivery: "Démarrer la livraison",
+  markComplete: "Livraison terminée",
+  estimatedPrice: "Prix estimé",
+  paymentMethod: "Moyen de paiement",
+  pullToRefresh: "Tirer pour actualiser",
+  autoRefresh: "Mise à jour toutes les 20 secondes",
 };
 
 const en: Translations = {
@@ -454,6 +535,33 @@ const en: Translations = {
   inactive: "Inactive",
   home: "Home",
   settings: "Settings",
+  availableOrders: "Available Orders",
+  noAvailableOrders: "No available orders",
+  noAvailableOrdersDesc: "No orders near you right now. The list updates automatically.",
+  acceptOrder: "Accept Order",
+  accepting: "Accepting...",
+  orderAccepted: "Order Accepted!",
+  statusSearching: "Searching for driver",
+  statusAccepted: "Accepted",
+  statusArrived: "Arrived at pickup",
+  statusInTransit: "In Transit",
+  kmAway: "km",
+  dzd: "DZD",
+  cash: "Cash",
+  card: "Card",
+  mobilePayment: "Mobile Payment",
+  pendingApproval: "Account Pending Approval",
+  pendingApprovalDesc: "Your partner account is under review by the administration. You will see orders once approved.",
+  locationPermDenied: "Allow location access to see orders closest to you.",
+  myActiveOrders: "My Active Orders",
+  noActiveOrders: "No active orders right now",
+  markArrived: "Mark as Arrived",
+  startDelivery: "Start Delivery",
+  markComplete: "Complete Delivery",
+  estimatedPrice: "Estimated Price",
+  paymentMethod: "Payment Method",
+  pullToRefresh: "Pull to refresh",
+  autoRefresh: "Auto-refreshes every 20 seconds",
 };
 
 export const translations: Record<Language, Translations> = { ar, fr, en };

@@ -34,7 +34,7 @@ UMOVE ANNABA is a professional mobile-first logistics/moving app for the Annaba 
 | `/signup` | Role selector (Client / Partner) + registration form |
 | `/partner-setup` | Truck type + license plate form (Partners only, first-time) |
 | `/dashboard` | Client dashboard + admin shortcut banner (if admin email) |
-| `/partner-dashboard` | Live orders feed for partners (Firestore `onSnapshot`) |
+| `/partner-dashboard` | Yassir-like dispatch: GPS location, available orders from protected API (polled 20s), accept button, my active orders from Firestore with status transitions |
 | `/admin` | Admin-only panel: tabs for Orders / Users / Partners |
 | `/settings` | Profile info, language switcher (AR/FR/EN), logout |
 
@@ -86,6 +86,16 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 - `server/websocket.ts` — WebSocket server, partner registry, proximity-based notify
 - `server/routes/deliveries.ts` — Full delivery CRUD with new order schema
 - `shared/orderSchema.ts` — Zod schemas + TypeScript types for orders
+
+### Key Frontend Files
+- `lib/partnerApi.ts` — Protected API service: `fetchAvailableOrders`, `acceptOrder`, `updateOrderStatus`
+- `lib/i18n.ts` — All three languages (AR/FR/EN) include dispatch UI strings
+- `app/partner-dashboard.tsx` — Full Yassir-like dispatch UI with GPS, API polling, accept, status transitions
+
+### Frontend Environment Variables
+- `EXPO_PUBLIC_API_URL` — Backend URL (set to `https://$REPLIT_DEV_DOMAIN` in expo:dev script)
+- `EXPO_PUBLIC_DOMAIN` — Legacy domain fallback (set to `$REPLIT_DEV_DOMAIN`)
+- `EXPO_PUBLIC_PARTNER_API_KEY` — Shared secret for `x-api-key` header (same value as `PARTNER_API_KEY`)
 
 ---
 
