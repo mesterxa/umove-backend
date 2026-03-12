@@ -48,3 +48,4 @@ umove-annaba-*.json
 
 # Build output
 server_dist/
+dist/
