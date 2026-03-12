@@ -15,33 +15,21 @@ function initializeFirebaseAdmin(): App {
 
   if (serviceAccountEnv) {
     try {
-      // تعديل هام: التأكد من تحويل النص إلى JSON بشكل صحيح مهما كان تنسيقه في Render
-      const serviceAccount = typeof serviceAccountEnv === 'string' 
-        ? JSON.parse(serviceAccountEnv) 
+      // تعديل ذكي: تنظيف النص وتحويله لـ JSON بشكل صحيح مهما كان تنسيقه في Render
+      const parsedConfig = typeof serviceAccountEnv === 'string' 
+        ? JSON.parse(serviceAccountEnv.trim()) 
         : serviceAccountEnv;
 
       return initializeApp({
-        credential: cert(serviceAccount),
-        projectId: serviceAccount.project_id,
+        credential: cert(parsedConfig),
+        projectId: parsedConfig.project_id || "umove-annaba",
       });
     } catch (parseError) {
-      console.error("❌ Error parsing FIREBASE_SERVICE_ACCOUNT:", parseError);
+      console.error("❌ Critical: Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", parseError);
     }
   }
 
-  // كخطة بديلة إذا لم ينجح الـ JSON الكامل
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-
-  if (projectId && clientEmail && privateKey) {
-    return initializeApp({
-      credential: cert({ projectId, clientEmail, privateKey }),
-      projectId,
-    });
-  }
-
-  throw new Error("Firebase Admin credentials not found or invalid.");
+  throw new Error("Firebase Admin credentials missing or invalid.");
 }
 
 try {
