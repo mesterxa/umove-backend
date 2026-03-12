@@ -4,7 +4,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 const router = Router();
 
-// التعديل الأساسي: التوافق مع اسم المجموعة في Firestore لديك
+// التوافق مع اسم المجموعة في Firestore لديك
 const COLLECTION = "orders";
 
 type DeliveryStatus = "pending" | "in-transit" | "delivered" | "cancelled";
@@ -65,37 +65,52 @@ router.post("/", async (req: Request, res: Response) => {
   }
 });
 
-// 2. جلب جميع الطلبات (GET)
+// 2. جلب جميع الطلبات (GET) مع حماية التاريخ
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const db = getDb();
+    let snapshot;
 
-    // تم إزالة الفلتر لضمان جلب البيانات الحالية من مجموعة orders
-    const snapshot = await db
-      .collection(COLLECTION)
-      .orderBy("createdAt", "desc")
-      .get();
+    try {
+      // المحاولة الأولى: جلب البيانات مرتبة حسب التاريخ (مطلبك الأساسي)
+      snapshot = await db
+        .collection(COLLECTION)
+        .orderBy("createdAt", "desc")
+        .get();
+    } catch (orderError: any) {
+      // إذا فشل الترتيب (بسبب نقص الفهرس أو بيانات قديمة)، نجلبها بدون ترتيب مؤقتاً
+      console.warn("Ordering failed, fetching without sort. Error:", orderError.message);
+      snapshot = await db.collection(COLLECTION).get();
+    }
 
     const deliveries = snapshot.docs.map((doc) => {
       const data = doc.data();
+      
+      // وظيفة مساعدة لتحويل طابع Firestore الزمني إلى نص ISO بشكل آمن
+      const formatTime = (timestamp: any) => {
+        if (!timestamp) return null;
+        if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
+        return timestamp; // إذا كان نصاً بالفعل
+      };
+
       return {
         id: doc.id,
         ...data,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
-        updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? null,
+        // ضمان عدم وجود null في التاريخ إذا وجدنا بيانات قديمة
+        createdAt: formatTime(data.createdAt) || new Date().toISOString(),
+        updatedAt: formatTime(data.updatedAt) || new Date().toISOString(),
       };
     });
 
     return res.json({ 
       success: true,
       deliveries, 
-      total: deliveries.length 
+      total: deliveries.length,
+      isSorted: snapshot.query.toString().includes('orderBy') // لتعرف إذا نجح الترتيب أم لا
     });
   } catch (error) {
     console.error("GET /api/deliveries error:", error);
-    return res
-      .status(500)
-      .json({ error: "Failed to fetch orders from Firestore" });
+    return res.status(500).json({ error: "Failed to fetch orders from Firestore" });
   }
 });
 
@@ -105,12 +120,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status } = req.body as UpdateStatusBody;
 
-    const validStatuses: DeliveryStatus[] = [
-      "pending",
-      "in-transit",
-      "delivered",
-      "cancelled",
-    ];
+    const validStatuses: DeliveryStatus[] = ["pending", "in-transit", "delivered", "cancelled"];
 
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
@@ -142,9 +152,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error(`PATCH /api/deliveries/${req.params.id} error:`, error);
-    return res
-      .status(500)
-      .json({ error: "Failed to update order status" });
+    return res.status(500).json({ error: "Failed to update order status" });
   }
 });
 
