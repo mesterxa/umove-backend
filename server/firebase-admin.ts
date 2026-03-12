@@ -1,44 +1,38 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
-import { getAuth, Auth } from "firebase-admin/auth";
 
 let adminApp: App;
 let adminDb: Firestore;
-let adminAuth: Auth;
 
 function initializeFirebaseAdmin(): App {
-  if (getApps().length > 0) {
-    return getApps()[0];
+  if (getApps().length > 0) return getApps()[0];
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  // معالجة حاسمة لضمان قراءة المفتاح الخاص بشكل سليم في بيئة Render
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+
+  if (projectId && clientEmail && privateKey) {
+    console.log("🛠️ Attempting initialization with dedicated variables...");
+    return initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey,
+      }),
+      projectId,
+    });
   }
 
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
-
-  if (serviceAccountEnv) {
-    try {
-      // تعديل ذكي: تنظيف النص وتحويله لـ JSON بشكل صحيح مهما كان تنسيقه في Render
-      const parsedConfig = typeof serviceAccountEnv === 'string' 
-        ? JSON.parse(serviceAccountEnv.trim()) 
-        : serviceAccountEnv;
-
-      return initializeApp({
-        credential: cert(parsedConfig),
-        projectId: parsedConfig.project_id || "umove-annaba",
-      });
-    } catch (parseError) {
-      console.error("❌ Critical: Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", parseError);
-    }
-  }
-
-  throw new Error("Firebase Admin credentials missing or invalid.");
+  throw new Error("Missing Firebase variables in Render Environment.");
 }
 
 try {
   adminApp = initializeFirebaseAdmin();
   adminDb = getFirestore(adminApp);
-  adminAuth = getAuth(adminApp);
-  console.log("✅ Firebase Admin SDK initialized successfully");
+  console.log("🚀 SUCCESS: Firebase Admin is now LIVE and CONNECTED!");
 } catch (error) {
-  console.error("❌ Firebase Admin SDK initialization failed:", error);
+  console.error("❌ Critical: Firebase connection failed:", error);
 }
 
-export { adminApp, adminDb, adminAuth };
+export { adminDb };
