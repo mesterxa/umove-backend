@@ -4,7 +4,8 @@ import { FieldValue } from "firebase-admin/firestore";
 
 const router = Router();
 
-const COLLECTION = "deliveries";
+// التعديل الأساسي: التوافق مع اسم المجموعة في Firestore لديك
+const COLLECTION = "orders";
 
 type DeliveryStatus = "pending" | "in-transit" | "delivered" | "cancelled";
 
@@ -26,6 +27,7 @@ function getDb() {
   return adminDb;
 }
 
+// 1. إضافة طلب جديد (POST)
 router.post("/", async (req: Request, res: Response) => {
   try {
     const { customerName, phone, pickupLocation, dropoffLocation } =
@@ -33,8 +35,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     if (!customerName || !phone || !pickupLocation || !dropoffLocation) {
       return res.status(400).json({
-        error:
-          "Missing required fields: customerName, phone, pickupLocation, dropoffLocation",
+        error: "Missing required fields: customerName, phone, pickupLocation, dropoffLocation",
       });
     }
 
@@ -60,17 +61,18 @@ router.post("/", async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error("POST /api/deliveries error:", error);
-    return res.status(500).json({ error: "Failed to create delivery request" });
+    return res.status(500).json({ error: "Failed to create order request" });
   }
 });
 
+// 2. جلب جميع الطلبات (GET)
 router.get("/", async (_req: Request, res: Response) => {
   try {
     const db = getDb();
 
+    // تم إزالة الفلتر لضمان جلب البيانات الحالية من مجموعة orders
     const snapshot = await db
       .collection(COLLECTION)
-      .where("status", "in", ["pending", "in-transit"])
       .orderBy("createdAt", "desc")
       .get();
 
@@ -84,15 +86,20 @@ router.get("/", async (_req: Request, res: Response) => {
       };
     });
 
-    return res.json({ deliveries, total: deliveries.length });
+    return res.json({ 
+      success: true,
+      deliveries, 
+      total: deliveries.length 
+    });
   } catch (error) {
     console.error("GET /api/deliveries error:", error);
     return res
       .status(500)
-      .json({ error: "Failed to fetch delivery requests" });
+      .json({ error: "Failed to fetch orders from Firestore" });
   }
 });
 
+// 3. تحديث حالة الطلب (PATCH)
 router.patch("/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -116,7 +123,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
     const doc = await docRef.get();
 
     if (!doc.exists) {
-      return res.status(404).json({ error: `Delivery ${id} not found` });
+      return res.status(404).json({ error: `Order ${id} not found` });
     }
 
     await docRef.update({
@@ -137,7 +144,7 @@ router.patch("/:id", async (req: Request, res: Response) => {
     console.error(`PATCH /api/deliveries/${req.params.id} error:`, error);
     return res
       .status(500)
-      .json({ error: "Failed to update delivery status" });
+      .json({ error: "Failed to update order status" });
   }
 });
 
