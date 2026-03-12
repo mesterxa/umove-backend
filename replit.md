@@ -49,9 +49,9 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 ```
 
 ### Firestore Collections
-- `users/{uid}` — uid, email, name, phone, role (client|partner|admin), needsTruckSetup, createdAt
+- `users/{uid}` — uid, email, name, phone, role (client|partner|admin), isApproved, needsTruckSetup, createdAt
 - `partners/{uid}` — uid, truckType, licensePlate, status
-- `orders/{id}` — name, phone, pickup, delivery, status (pending), clientId, createdAt
+- `orders/{id}` — orderId, clientName, clientPhone, pickupLocation {address, lat, lng}, dropoffLocation {address, lat, lng}, estimatedPrice (DZD), paymentMethod (cash|card|mobile_payment), status (searching|accepted|arrived|in_transit|completed), driverId (null until accepted), timestamp, updatedAt
 
 ### Auth Routing (AuthContext + _layout.tsx)
 - `AuthRedirect` component auto-routes authenticated users to their correct dashboard
@@ -61,7 +61,31 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 ### Backend (Express API)
 - **Framework**: Express.js 5 (`server/index.ts`)
 - **Port**: 5000 — serves API + landing page HTML (`server/templates/landing-page.html`)
-- **CORS**: Configured for Replit dev/deployment domains
+- **CORS**: Configured for Replit dev/deployment domains + allows `x-api-key`, `x-driver-id` headers
+- **WebSocket**: `ws` server on `/ws/partners` — partners connect with `?driverId=&lat=&lng=` and receive `new_order` push events in real-time
+- **Firestore**: Uses REST mode (`FIRESTORE_PREFER_REST=1`) for OpenSSL 3 compatibility
+
+### Backend API Routes
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/health` | None | Server health check |
+| POST | `/api/deliveries` | None (client-facing) | Create order, triggers WebSocket notify to nearby partners |
+| GET | `/api/deliveries?lat=&lng=` | `x-api-key` + `x-driver-id` (partner only, isApproved=true) | Returns `searching` orders sorted by proximity (Haversine) |
+| PATCH | `/api/deliveries/:id` | `x-api-key` + `x-driver-id` | Advance order state machine |
+
+### Backend Environment Variables
+- `FIREBASE_PROJECT_ID` — Firebase project ID (secret)
+- `FIREBASE_CLIENT_EMAIL` — Firebase service account email (secret)
+- `FIREBASE_PRIVATE_KEY` — Firebase private key PEM (secret)
+- `PARTNER_API_KEY` — Secret key required in `x-api-key` header for partner API access
+
+### Key Backend Files
+- `server/firebase-admin.ts` — Firebase Admin init with PEM normalization for OpenSSL 3
+- `server/middleware/partnerAuth.ts` — `requireApiKey` + `requireApprovedPartner` middleware
+- `server/utils/haversine.ts` — Distance calculation between GPS coordinates
+- `server/websocket.ts` — WebSocket server, partner registry, proximity-based notify
+- `server/routes/deliveries.ts` — Full delivery CRUD with new order schema
+- `shared/orderSchema.ts` — Zod schemas + TypeScript types for orders
 
 ---
 

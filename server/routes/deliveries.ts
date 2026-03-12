@@ -1,132 +1,143 @@
 import { Router, Request, Response } from "express";
 import { adminDb } from "../firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { requireApiKey, requireApprovedPartner } from "../middleware/partnerAuth";
+import { haversineDistanceKm } from "../utils/haversine";
+import { notifyNearbyPartners } from "../websocket";
+import { CreateOrderSchema, UpdateOrderStatusSchema } from "../../shared/orderSchema";
 
 const router = Router();
-
-// التوافق مع اسم المجموعة في Firestore لديك
 const COLLECTION = "orders";
 
-type DeliveryStatus = "pending" | "in-transit" | "delivered" | "cancelled";
-
-interface CreateDeliveryBody {
-  customerName: string;
-  phone: string;
-  pickupLocation: string;
-  dropoffLocation: string;
-}
-
-interface UpdateStatusBody {
-  status: DeliveryStatus;
-}
-
 function getDb() {
-  if (!adminDb) {
-    throw new Error("Firestore is not initialized. Check Firebase credentials.");
-  }
+  if (!adminDb) throw new Error("Firestore is not initialized. Check Firebase credentials.");
   return adminDb;
 }
 
-// 1. إضافة طلب جديد (POST)
+function formatTimestamp(ts: any): string | null {
+  if (!ts) return null;
+  if (typeof ts.toDate === "function") return ts.toDate().toISOString();
+  return ts;
+}
+
+function formatOrder(docId: string, data: FirebaseFirestore.DocumentData) {
+  return {
+    orderId: docId,
+    clientName: data.clientName,
+    clientPhone: data.clientPhone,
+    pickupLocation: data.pickupLocation,
+    dropoffLocation: data.dropoffLocation,
+    estimatedPrice: data.estimatedPrice,
+    paymentMethod: data.paymentMethod,
+    status: data.status,
+    driverId: data.driverId ?? null,
+    timestamp: formatTimestamp(data.timestamp),
+    updatedAt: formatTimestamp(data.updatedAt),
+  };
+}
+
+// POST /api/deliveries — Create a new order (client-facing, no auth required)
 router.post("/", async (req: Request, res: Response) => {
   try {
-    const { customerName, phone, pickupLocation, dropoffLocation } =
-      req.body as CreateDeliveryBody;
+    const parsed = CreateOrderSchema.safeParse(req.body);
 
-    if (!customerName || !phone || !pickupLocation || !dropoffLocation) {
-      return res.status(400).json({
-        error: "Missing required fields: customerName, phone, pickupLocation, dropoffLocation",
-      });
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     }
 
+    const input = parsed.data;
     const db = getDb();
 
-    const delivery = {
-      customerName: customerName.trim(),
-      phone: phone.trim(),
-      pickupLocation: pickupLocation.trim(),
-      dropoffLocation: dropoffLocation.trim(),
-      status: "pending" as DeliveryStatus,
-      createdAt: FieldValue.serverTimestamp(),
+    const orderData = {
+      clientName: input.clientName.trim(),
+      clientPhone: input.clientPhone.trim(),
+      pickupLocation: input.pickupLocation,
+      dropoffLocation: input.dropoffLocation,
+      estimatedPrice: input.estimatedPrice,
+      paymentMethod: input.paymentMethod,
+      status: "searching",
+      driverId: null,
+      timestamp: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
 
-    const docRef = await db.collection(COLLECTION).add(delivery);
+    const docRef = await db.collection(COLLECTION).add(orderData);
 
-    return res.status(201).json({
-      id: docRef.id,
-      ...delivery,
-      createdAt: new Date().toISOString(),
+    const responseOrder = {
+      orderId: docRef.id,
+      ...orderData,
+      timestamp: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    });
+    };
+
+    notifyNearbyPartners(responseOrder, input.pickupLocation.lat, input.pickupLocation.lng);
+
+    return res.status(201).json({ success: true, order: responseOrder });
   } catch (error) {
     console.error("POST /api/deliveries error:", error);
-    return res.status(500).json({ error: "Failed to create order request" });
+    return res.status(500).json({ error: "Failed to create order" });
   }
 });
 
-// 2. جلب جميع الطلبات (GET) مع حماية التاريخ
-router.get("/", async (_req: Request, res: Response) => {
+// GET /api/deliveries — Partner-only: returns searching orders sorted by proximity
+// Headers required:
+//   x-api-key     — server-side partner API key
+//   x-driver-id   — driver's Firebase UID (verified against Firestore)
+// Query params:
+//   lat, lng      — driver's current coordinates for proximity sorting
+router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res: Response) => {
   try {
+    const driverLat = parseFloat(req.query.lat as string);
+    const driverLng = parseFloat(req.query.lng as string);
+    const hasCoords = !isNaN(driverLat) && !isNaN(driverLng);
+
     const db = getDb();
-    let snapshot;
 
-    try {
-      // المحاولة الأولى: جلب البيانات مرتبة حسب التاريخ (مطلبك الأساسي)
-      snapshot = await db
-        .collection(COLLECTION)
-        .orderBy("createdAt", "desc")
-        .get();
-    } catch (orderError: any) {
-      // إذا فشل الترتيب (بسبب نقص الفهرس أو بيانات قديمة)، نجلبها بدون ترتيب مؤقتاً
-      console.warn("Ordering failed, fetching without sort. Error:", orderError.message);
-      snapshot = await db.collection(COLLECTION).get();
-    }
+    const snapshot = await db
+      .collection(COLLECTION)
+      .where("status", "==", "searching")
+      .orderBy("timestamp", "desc")
+      .get();
 
-    const deliveries = snapshot.docs.map((doc) => {
+    let orders = snapshot.docs.map((doc) => {
       const data = doc.data();
-      
-      // وظيفة مساعدة لتحويل طابع Firestore الزمني إلى نص ISO بشكل آمن
-      const formatTime = (timestamp: any) => {
-        if (!timestamp) return null;
-        if (typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
-        return timestamp; // إذا كان نصاً بالفعل
-      };
+      const order = formatOrder(doc.id, data);
 
-      return {
-        id: doc.id,
-        ...data,
-        // ضمان عدم وجود null في التاريخ إذا وجدنا بيانات قديمة
-        createdAt: formatTime(data.createdAt) || new Date().toISOString(),
-        updatedAt: formatTime(data.updatedAt) || new Date().toISOString(),
-      };
+      const distanceKm = hasCoords && data.pickupLocation?.lat != null && data.pickupLocation?.lng != null
+        ? haversineDistanceKm(driverLat, driverLng, data.pickupLocation.lat, data.pickupLocation.lng)
+        : null;
+
+      return { ...order, distanceKm };
     });
 
-    return res.json({ 
-      success: true,
-      deliveries, 
-      total: deliveries.length,
-      isSorted: snapshot.query.toString().includes('orderBy') // لتعرف إذا نجح الترتيب أم لا
-    });
-  } catch (error) {
-    console.error("GET /api/deliveries error:", error);
-    return res.status(500).json({ error: "Failed to fetch orders from Firestore" });
-  }
-});
-
-// 3. تحديث حالة الطلب (PATCH)
-router.patch("/:id", async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body as UpdateStatusBody;
-
-    const validStatuses: DeliveryStatus[] = ["pending", "in-transit", "delivered", "cancelled"];
-
-    if (!status || !validStatuses.includes(status)) {
-      return res.status(400).json({
-        error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+    if (hasCoords) {
+      orders.sort((a, b) => {
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
       });
     }
+
+    return res.json({ success: true, total: orders.length, orders });
+  } catch (error) {
+    console.error("GET /api/deliveries error:", error);
+    return res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+// PATCH /api/deliveries/:id — Update order status (partner-only)
+// Supports full state machine: searching → accepted → arrived → in_transit → completed
+router.patch("/:id", requireApiKey, requireApprovedPartner, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const parsed = UpdateOrderStatusSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+    }
+
+    const { status, driverId: bodyDriverId } = parsed.data;
+    const driverId = (req as any).driverId as string;
 
     const db = getDb();
     const docRef = db.collection(COLLECTION).doc(id);
@@ -136,20 +147,19 @@ router.patch("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: `Order ${id} not found` });
     }
 
-    await docRef.update({
+    const updatePayload: Record<string, any> = {
       status,
       updatedAt: FieldValue.serverTimestamp(),
-    });
+    };
+
+    if (status === "accepted") {
+      updatePayload.driverId = bodyDriverId ?? driverId;
+    }
+
+    await docRef.update(updatePayload);
 
     const updated = await docRef.get();
-    const data = updated.data()!;
-
-    return res.json({
-      id: updated.id,
-      ...data,
-      createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
-      updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? null,
-    });
+    return res.json({ success: true, order: formatOrder(updated.id, updated.data()!) });
   } catch (error) {
     console.error(`PATCH /api/deliveries/${req.params.id} error:`, error);
     return res.status(500).json({ error: "Failed to update order status" });
