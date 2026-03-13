@@ -12,6 +12,7 @@ export const OrderStatusSchema = z.enum([
   "arrived",
   "in_transit",
   "completed",
+  "cancelled",
 ]);
 
 export const PaymentMethodSchema = z.enum(["cash", "card", "mobile_payment"]);
@@ -23,11 +24,16 @@ export const CreateOrderSchema = z.object({
   dropoffLocation: GeoPointSchema,
   estimatedPrice: z.number().positive("Price must be positive"),
   paymentMethod: PaymentMethodSchema.default("cash"),
+  clientId: z.string().optional(),
 });
 
 export const UpdateOrderStatusSchema = z.object({
   status: OrderStatusSchema,
   driverId: z.string().optional(),
+});
+
+export const CancelOrderSchema = z.object({
+  clientIdToken: z.string().min(1),
 });
 
 export type GeoPoint = z.infer<typeof GeoPointSchema>;
@@ -46,6 +52,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   status: OrderStatus;
   driverId: string | null;
+  clientId?: string | null;
   timestamp: FirebaseFirestore.Timestamp | null;
   updatedAt: FirebaseFirestore.Timestamp | null;
 }

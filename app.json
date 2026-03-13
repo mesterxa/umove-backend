@@ -15,11 +15,19 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.umoveannaba"
+      "bundleIdentifier": "com.umoveannaba",
+      "config": {
+        "googleMapsApiKey": "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_PLACEHOLDER"
+      }
     },
     "android": {
       "package": "com.umoveannaba",
       "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_PLACEHOLDER"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#0A3D8F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -38,7 +46,13 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY_PLACEHOLDER"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

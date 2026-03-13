@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { adminDb } from "../firebase-admin";
+import { getAuth } from "firebase-admin/auth";
 import { FieldValue } from "firebase-admin/firestore";
 import { requireApiKey, requireApprovedPartner } from "../middleware/partnerAuth";
 import { haversineDistanceKm } from "../utils/haversine";
@@ -8,6 +9,8 @@ import { CreateOrderSchema, UpdateOrderStatusSchema } from "../../shared/orderSc
 
 const router = Router();
 const COLLECTION = "orders";
+
+const ACTIVE_STATUSES = ["accepted", "arrived", "in_transit"];
 
 function getDb() {
   if (!adminDb) throw new Error("Firestore is not initialized. Check Firebase credentials.");
@@ -31,9 +34,18 @@ function formatOrder(docId: string, data: FirebaseFirestore.DocumentData) {
     paymentMethod: data.paymentMethod,
     status: data.status,
     driverId: data.driverId ?? null,
+    clientId: data.clientId ?? null,
     timestamp: formatTimestamp(data.timestamp),
     updatedAt: formatTimestamp(data.updatedAt),
   };
+}
+
+async function setDriverBusy(db: FirebaseFirestore.Firestore, driverId: string, busy: boolean) {
+  try {
+    await db.collection("users").doc(driverId).update({ isBusy: busy });
+  } catch (err) {
+    console.error(`Failed to set driver ${driverId} isBusy=${busy}:`, err);
+  }
 }
 
 // POST /api/deliveries — Create a new order (client-facing, no auth required)
@@ -48,7 +60,7 @@ router.post("/", async (req: Request, res: Response) => {
     const input = parsed.data;
     const db = getDb();
 
-    const orderData = {
+    const orderData: Record<string, any> = {
       clientName: input.clientName.trim(),
       clientPhone: input.clientPhone.trim(),
       pickupLocation: input.pickupLocation,
@@ -60,6 +72,10 @@ router.post("/", async (req: Request, res: Response) => {
       timestamp: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp(),
     };
+
+    if (input.clientId) {
+      orderData.clientId = input.clientId;
+    }
 
     const docRef = await db.collection(COLLECTION).add(orderData);
 
@@ -80,11 +96,6 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // GET /api/deliveries — Partner-only: returns searching orders sorted by proximity
-// Headers required:
-//   x-api-key     — server-side partner API key
-//   x-driver-id   — driver's Firebase UID (verified against Firestore)
-// Query params:
-//   lat, lng      — driver's current coordinates for proximity sorting
 router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res: Response) => {
   try {
     const driverLat = parseFloat(req.query.lat as string);
@@ -93,8 +104,6 @@ router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res:
 
     const db = getDb();
 
-    // NOTE: No orderBy here — avoids requiring a Firestore composite index.
-    // We sort entirely in-memory by distance (primary) and timestamp (secondary).
     const snapshot = await db
       .collection(COLLECTION)
       .where("status", "==", "searching")
@@ -119,14 +128,12 @@ router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res:
       return { ...order, distanceKm };
     });
 
-    // Sort: closest first (null distances go to end), then newest first
     orders.sort((a, b) => {
       if (a.distanceKm !== null && b.distanceKm !== null) {
         return a.distanceKm - b.distanceKm;
       }
       if (a.distanceKm === null && b.distanceKm !== null) return 1;
       if (a.distanceKm !== null && b.distanceKm === null) return -1;
-      // Both null — fall back to reverse-chronological
       const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
       return tb - ta;
@@ -140,7 +147,6 @@ router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res:
 });
 
 // PATCH /api/deliveries/:id — Update order status (partner-only)
-// Supports full state machine: searching → accepted → arrived → in_transit → completed
 router.patch("/:id", requireApiKey, requireApprovedPartner, async (req: Request, res: Response) => {
   try {
     const id = String(req.params.id);
@@ -161,6 +167,24 @@ router.patch("/:id", requireApiKey, requireApprovedPartner, async (req: Request,
       return res.status(404).json({ error: `Order ${id} not found` });
     }
 
+    const orderData = doc.data()!;
+
+    // ── Yassir Dispatch Logic: Driver Lock ──────────────────────────────────
+    if (status === "accepted") {
+      // Check if the driver already has an active order
+      const activeOrdersSnap = await db
+        .collection(COLLECTION)
+        .where("driverId", "==", driverId)
+        .where("status", "in", ACTIVE_STATUSES)
+        .get();
+
+      if (!activeOrdersSnap.empty) {
+        return res.status(409).json({
+          error: "Driver is already on an active order. Complete or wait for the current order to finish.",
+        });
+      }
+    }
+
     const updatePayload: Record<string, any> = {
       status,
       updatedAt: FieldValue.serverTimestamp(),
@@ -172,11 +196,79 @@ router.patch("/:id", requireApiKey, requireApprovedPartner, async (req: Request,
 
     await docRef.update(updatePayload);
 
+    // ── isBusy Sync ──────────────────────────────────────────────────────────
+    if (status === "accepted") {
+      await setDriverBusy(db, driverId, true);
+    } else if (status === "completed" || status === "cancelled") {
+      const effectiveDriverId = orderData.driverId ?? driverId;
+      if (effectiveDriverId) {
+        await setDriverBusy(db, effectiveDriverId, false);
+      }
+    }
+
     const updated = await docRef.get();
     return res.json({ success: true, order: formatOrder(updated.id, updated.data()!) });
   } catch (error) {
     console.error(`PATCH /api/deliveries/${req.params.id} error:`, error);
     return res.status(500).json({ error: "Failed to update order status" });
+  }
+});
+
+// POST /api/deliveries/:id/cancel — Customer cancellation (requires Firebase Auth token)
+router.post("/:id/cancel", async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id);
+
+    // Verify Firebase Auth ID token from Authorization header
+    const authHeader = req.headers.authorization || "";
+    const idToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (!idToken) {
+      return res.status(401).json({ error: "Authorization token required." });
+    }
+
+    let decodedToken: { uid: string };
+    try {
+      decodedToken = await getAuth().verifyIdToken(idToken);
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired authorization token." });
+    }
+
+    const db = getDb();
+    const docRef = db.collection(COLLECTION).doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ error: `Order ${id} not found.` });
+    }
+
+    const orderData = docSnap.data()!;
+
+    // Only allow cancellation if the order belongs to this customer
+    if (orderData.clientId && orderData.clientId !== decodedToken.uid) {
+      return res.status(403).json({ error: "You can only cancel your own orders." });
+    }
+
+    // Only allow cancellation of non-terminal orders
+    if (orderData.status === "completed" || orderData.status === "cancelled") {
+      return res.status(400).json({ error: `Order is already ${orderData.status}.` });
+    }
+
+    await docRef.update({
+      status: "cancelled",
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    // Free up the assigned driver
+    if (orderData.driverId) {
+      await setDriverBusy(db, orderData.driverId, false);
+    }
+
+    const updated = await docRef.get();
+    return res.json({ success: true, order: formatOrder(updated.id, updated.data()!) });
+  } catch (error) {
+    console.error(`POST /api/deliveries/${req.params.id}/cancel error:`, error);
+    return res.status(500).json({ error: "Failed to cancel order." });
   }
 });
 

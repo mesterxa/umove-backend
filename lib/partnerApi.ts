@@ -14,7 +14,7 @@ export interface ApiOrder {
   dropoffLocation: ApiGeoPoint;
   estimatedPrice: number;
   paymentMethod: "cash" | "card" | "mobile_payment";
-  status: "searching" | "accepted" | "arrived" | "in_transit" | "completed";
+  status: "searching" | "accepted" | "arrived" | "in_transit" | "completed" | "cancelled";
   driverId: string | null;
   timestamp: string | null;
   distanceKm: number | null;
@@ -42,6 +42,20 @@ function getApiKey(): string {
   );
 }
 
+async function safeParseJson(res: Response, url: string): Promise<any> {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw Object.assign(
+      new Error(
+        `Server returned non-JSON response (HTTP ${res.status}). URL: ${url}`
+      ),
+      { status: res.status }
+    );
+  }
+}
+
 export async function fetchAvailableOrders(
   driverId: string,
   lat?: number,
@@ -66,21 +80,7 @@ export async function fetchAvailableOrders(
     },
   });
 
-  const text = await res.text();
-
-  let body: any = {};
-  try {
-    body = JSON.parse(text);
-  } catch {
-    // Server returned non-JSON (HTML error page, etc.)
-    throw Object.assign(
-      new Error(
-        `Server returned non-JSON response (HTTP ${res.status}). ` +
-          `Check the API URL: ${url}`
-      ),
-      { status: res.status }
-    );
-  }
+  const body = await safeParseJson(res, url);
 
   if (!res.ok) {
     throw Object.assign(new Error(body.error || `HTTP ${res.status}`), {
@@ -110,18 +110,7 @@ async function patchOrder(
     body: JSON.stringify(payload),
   });
 
-  const text = await res.text();
-  let body: any = {};
-  try {
-    body = JSON.parse(text);
-  } catch {
-    throw Object.assign(
-      new Error(
-        `Server returned non-JSON response (HTTP ${res.status}). URL: ${url}`
-      ),
-      { status: res.status }
-    );
-  }
+  const body = await safeParseJson(res, url);
 
   if (!res.ok) {
     throw Object.assign(new Error(body.error || `HTTP ${res.status}`), {
@@ -145,4 +134,30 @@ export async function updateOrderStatus(
   status: "arrived" | "in_transit" | "completed"
 ): Promise<ApiOrder> {
   return patchOrder(orderId, driverId, { status });
+}
+
+export async function cancelOrder(
+  orderId: string,
+  idToken: string
+): Promise<ApiOrder> {
+  const base = getBaseUrl();
+  const url = `${base}/api/deliveries/${orderId}/cancel`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${idToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const body = await safeParseJson(res, url);
+
+  if (!res.ok) {
+    throw Object.assign(new Error(body.error || `HTTP ${res.status}`), {
+      status: res.status,
+    });
+  }
+
+  return body.order as ApiOrder;
 }
