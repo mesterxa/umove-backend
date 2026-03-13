@@ -93,30 +93,44 @@ router.get("/", requireApiKey, requireApprovedPartner, async (req: Request, res:
 
     const db = getDb();
 
+    // NOTE: No orderBy here — avoids requiring a Firestore composite index.
+    // We sort entirely in-memory by distance (primary) and timestamp (secondary).
     const snapshot = await db
       .collection(COLLECTION)
       .where("status", "==", "searching")
-      .orderBy("timestamp", "desc")
       .get();
 
     let orders = snapshot.docs.map((doc) => {
       const data = doc.data();
       const order = formatOrder(doc.id, data);
 
-      const distanceKm = hasCoords && data.pickupLocation?.lat != null && data.pickupLocation?.lng != null
-        ? haversineDistanceKm(driverLat, driverLng, data.pickupLocation.lat, data.pickupLocation.lng)
-        : null;
+      const distanceKm =
+        hasCoords &&
+        data.pickupLocation?.lat != null &&
+        data.pickupLocation?.lng != null
+          ? haversineDistanceKm(
+              driverLat,
+              driverLng,
+              data.pickupLocation.lat,
+              data.pickupLocation.lng
+            )
+          : null;
 
       return { ...order, distanceKm };
     });
 
-    if (hasCoords) {
-      orders.sort((a, b) => {
-        if (a.distanceKm === null) return 1;
-        if (b.distanceKm === null) return -1;
+    // Sort: closest first (null distances go to end), then newest first
+    orders.sort((a, b) => {
+      if (a.distanceKm !== null && b.distanceKm !== null) {
         return a.distanceKm - b.distanceKm;
-      });
-    }
+      }
+      if (a.distanceKm === null && b.distanceKm !== null) return 1;
+      if (a.distanceKm !== null && b.distanceKm === null) return -1;
+      // Both null — fall back to reverse-chronological
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    });
 
     return res.json({ success: true, total: orders.length, orders });
   } catch (error) {

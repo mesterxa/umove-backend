@@ -18,6 +18,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Catch-all: any /api/* route that wasn't matched above returns JSON 404
+  // This prevents the static HTML landing page from leaking into API consumers.
+  app.use("/api", (_req: Request, res: Response) => {
+    res.status(404).json({ error: "API endpoint not found." });
+  });
+
   const httpServer = createServer(app);
 
   initWebSocketServer(httpServer);
