@@ -35,7 +35,7 @@ UMOVE ANNABA is a professional mobile-first logistics/moving app for the Annaba 
 | `/partner-setup` | Truck type + license plate form (Partners only, first-time) |
 | `/dashboard` | Client dashboard: my orders, cancel button for active orders, payment summary modal on completion |
 | `/partner-dashboard` | Yassir-like dispatch: GPS, Strict Driver Lock (one active order at a time), available orders polled 20s, accept button, my active orders with map button + status transitions, payment summary modal on completion |
-| `/order-details` | Google Maps screen for drivers: live route Polyline (driver → pickup → dropoff), markers, order info, call client, navigate in Google Maps |
+| `/order-details` | OpenStreetMap screen for drivers (Leaflet.js + OSRM routing): live route polyline (driver → pickup → dropoff), color-coded markers, order info, call client, Start Navigation button |
 | `/admin` | Admin-only panel: tabs for Orders / Users / Partners |
 | `/settings` | Profile info, language switcher (AR/FR/EN), logout |
 
@@ -93,14 +93,14 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 - `lib/partnerApi.ts` — Protected API service: `fetchAvailableOrders`, `acceptOrder`, `updateOrderStatus`, `cancelOrder`
 - `lib/i18n.ts` — All three languages (AR/FR/EN) include dispatch UI strings
 - `app/partner-dashboard.tsx` — Yassir-like dispatch: Driver Lock, isBusy badge, accept → navigate to map, payment summary modal
-- `app/order-details.tsx` — Google Maps route viewer for drivers (react-native-maps, Directions API polyline, markers, click-to-call, open in Google Maps)
+- `app/order-details.tsx` — Free map screen for drivers: WebView + Leaflet.js + OpenStreetMap tiles + OSRM routing polyline. No API key required. Color-coded markers (blue=driver, orange=pickup, red=dropoff), "Start Navigation" opens Google Maps for turn-by-turn navigation.
 - `app/dashboard.tsx` — Customer dashboard with Cancel Order button + payment summary modal on completion
 
 ### Frontend Environment Variables
 - `EXPO_PUBLIC_API_URL` — Backend URL (set to `https://$REPLIT_DEV_DOMAIN` in expo:dev script)
 - `EXPO_PUBLIC_DOMAIN` — Legacy domain fallback (set to `$REPLIT_DEV_DOMAIN`)
 - `EXPO_PUBLIC_PARTNER_API_KEY` — Shared secret for `x-api-key` header (same value as `PARTNER_API_KEY`)
-- `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` — Google Maps API key for the driver Order Details screen (Directions API + Maps SDK). Requires Maps SDK for Android/iOS and Directions API enabled in Google Cloud Console. Without it, the map still shows but without the route polyline. Set this as a Secret.
+- ~~`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY`~~ — No longer needed. Maps now use OpenStreetMap (free, no API key) via Leaflet.js + OSRM routing inside a WebView.
 
 ---
 
