@@ -237,9 +237,16 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
-  configureExpoAndLanding(app);
+  // ── API Content-Type guard: all /api/* routes must return JSON ──────────
+  app.use("/api", (_req, res, next) => {
+    res.setHeader("Content-Type", "application/json");
+    next();
+  });
 
+  // ── API routes MUST be registered before static file serving ────────────
   const server = await registerRoutes(app);
+
+  configureExpoAndLanding(app);
 
   setupErrorHandler(app);
 

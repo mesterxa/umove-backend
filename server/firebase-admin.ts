@@ -1,67 +1,61 @@
 import { initializeApp, getApps, cert, App } from "firebase-admin/app";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
-import crypto from "crypto";
 
 process.env.FIRESTORE_PREFER_REST = "1";
 
-let adminApp: App;
-let adminDb: Firestore;
-
-function normalizePrivateKey(raw: string): string {
-  let pem = raw.includes('\\n') ? raw.replace(/\\n/g, '\n') : raw;
-
-  // Reconstruct proper PEM if newlines were lost (e.g. stored with spaces)
-  const headerMatch = pem.match(/-----BEGIN ([A-Z ]+)-----/);
-  const footerMatch = pem.match(/-----END ([A-Z ]+)-----/);
-
-  if (headerMatch && footerMatch) {
-    const header = `-----BEGIN ${headerMatch[1]}-----`;
-    const footer = `-----END ${footerMatch[1]}-----`;
-    const inner = pem
-      .replace(header, '')
-      .replace(footer, '')
-      .replace(/\s+/g, ''); // strip all whitespace from base64 body
-
-    const lines = inner.match(/.{1,64}/g) ?? [];
-    pem = [header, ...lines, footer].join('\n') + '\n';
-  }
-
-  try {
-    const keyObj = crypto.createPrivateKey({ key: pem, format: 'pem' });
-    return keyObj.export({ type: 'pkcs8', format: 'pem' }) as string;
-  } catch {
-    return pem;
-  }
-}
+let adminApp: App | undefined;
+let adminDb: Firestore | undefined;
 
 function initializeFirebaseAdmin(): App {
   if (getApps().length > 0) return getApps()[0];
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY ?? '');
-
-  if (projectId && clientEmail && privateKey) {
-    console.log("🛠️ Attempting initialization with dedicated variables...");
-    return initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-      projectId,
-    });
+  // ── Priority 1: FIREBASE_SERVICE_ACCOUNT JSON (most reliable) ──────────
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (serviceAccountJson) {
+    try {
+      // Fix: Replit stores the JSON with a corrupted line-break in the private_key
+      // field: backslash+space instead of \n. Restore it before parsing.
+      const cleaned = serviceAccountJson.replace(/\\ /g, "\\n");
+      const serviceAccount = JSON.parse(cleaned);
+      console.log("🛠️ Initializing Firebase with FIREBASE_SERVICE_ACCOUNT JSON...");
+      return initializeApp({ credential: cert(serviceAccount), projectId: serviceAccount.project_id });
+    } catch (err) {
+      console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:", err);
+    }
   }
 
-  throw new Error("Missing Firebase variables in Render Environment.");
+  // ── Priority 2: Individual env vars ────────────────────────────────────
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY ?? "";
+
+  // Normalize: convert literal \n sequences and space-separated lines to real newlines
+  if (privateKey.includes("\\n")) {
+    privateKey = privateKey.replace(/\\n/g, "\n");
+  } else if (!privateKey.includes("\n")) {
+    // Key body stored with spaces — reconstruct PEM line breaks
+    const header = "-----BEGIN PRIVATE KEY-----";
+    const footer = "-----END PRIVATE KEY-----";
+    const inner = privateKey.replace(header, "").replace(footer, "").trim().replace(/\s+/g, "");
+    const lines = inner.match(/.{1,64}/g) ?? [];
+    privateKey = [header, ...lines, footer].join("\n") + "\n";
+  }
+
+  if (projectId && clientEmail && privateKey) {
+    console.log("🛠️ Initializing Firebase with individual env vars...");
+    return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }), projectId });
+  }
+
+  throw new Error("No valid Firebase credentials found. Set FIREBASE_SERVICE_ACCOUNT or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.");
 }
 
 try {
   adminApp = initializeFirebaseAdmin();
   adminDb = getFirestore(adminApp);
-  console.log("🚀 SUCCESS: Firebase Admin is now LIVE and CONNECTED!");
+  console.log("🚀 Firebase Admin connected successfully.");
 } catch (error) {
-  console.error("❌ Critical: Firebase connection failed:", error);
+  console.error("❌ Firebase Admin init failed:", error);
 }
 
 export { adminDb };
+export const firebaseConnected = Boolean(adminDb);
