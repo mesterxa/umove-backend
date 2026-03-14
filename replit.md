@@ -11,7 +11,7 @@ UMOVE ANNABA is a professional mobile-first logistics/moving app for the Annaba 
 
 ## User Preferences
 - Communication: Simple, everyday language
-- Admin email: `mening25071999@gmail.com`
+- Admin email: `aymenmed25071999@gmail.com`
 
 ---
 
@@ -57,7 +57,7 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 ### Auth Routing (AuthContext + _layout.tsx)
 - `AuthRedirect` component auto-routes authenticated users to their correct dashboard
 - Partners with `needsTruckSetup: true` → redirected to `/partner-setup`
-- Admin email `mening25071999@gmail.com` always gets `role: "admin"`
+- Admin email `aymenmed25071999@gmail.com` always gets `role: "admin"`
 
 ### Backend (Express API)
 - **Framework**: Express.js 5 (`server/index.ts`)

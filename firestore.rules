@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == "aymenmed25071999@gmail.com";
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isApprovedPartner() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "partner" &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true;
+    }
+
+    // ── Users collection ───────────────────────────────────────────────────
+    match /users/{uid} {
+      // Any signed-in user can read their own profile; admin can read all
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Users can create their own profile on registration
+      allow create: if isOwner(uid);
+
+      // Users can update their own non-role fields; admin can update anything
+      allow update: if isAdmin() ||
+        (isOwner(uid) && !("role" in request.resource.data.diff(resource.data).affectedKeys()));
+
+      // Only admin can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ── Orders collection ──────────────────────────────────────────────────
+    match /orders/{orderId} {
+      // Admin and approved partners can read all orders
+      allow read: if isAdmin() || isApprovedPartner() ||
+        // Clients can read their own orders
+        (isSignedIn() && resource.data.clientId == request.auth.uid);
+
+      // Any signed-in client can create an order
+      allow create: if isSignedIn();
+
+      // Approved partners can update order status; admin can update anything;
+      // clients can only cancel their own orders
+      allow update: if isAdmin() ||
+        isApprovedPartner() ||
+        (isSignedIn() &&
+          resource.data.clientId == request.auth.uid &&
+          request.resource.data.status == "cancelled");
+
+      // Only admin can delete orders
+      allow delete: if isAdmin();
+    }
+
+  }
+}

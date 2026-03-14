@@ -143,7 +143,7 @@ function buildAdminPortalHtml(): string {
         <h2>Mobile App Admin</h2>
         <div class="info-box">
           <strong>Full admin controls are in the mobile app.</strong>
-          Log in with the admin account (<code>mening25071999@gmail.com</code>) in Expo Go to access:
+          Log in with the admin account (<code>aymenmed25071999@gmail.com</code>) in Expo Go to access:
           <ul style="margin-top:8px;padding-left:18px;list-style:disc">
             <li>Approve / reject driver accounts</li>
             <li>View all orders in real time</li>

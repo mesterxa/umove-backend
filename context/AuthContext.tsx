@@ -49,7 +49,7 @@ type AuthContextValue = {
   refreshProfile: () => Promise<void>;
 };
 
-const ADMIN_EMAIL = "mening25071999@gmail.com";
+const ADMIN_EMAIL = "aymenmed25071999@gmail.com";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
