@@ -32,7 +32,7 @@ UMOVE ANNABA is a professional mobile-first logistics/moving app for the Annaba 
 | `/` | Public landing page — hero, services, stats, "Why Us", quote form, "Be a Partner" CTA |
 | `/login` | Firebase Email/Password login |
 | `/signup` | Role selector (Client / Partner) + registration form |
-| `/partner-setup` | Truck type + license plate form (Partners only, first-time) |
+| `/partner-setup` | Full partner profile setup: entity type, truck type, license plate, workers, service specialization, coverage scope |
 | `/dashboard` | Client dashboard: my orders, cancel button for active orders, payment summary modal on completion |
 | `/partner-dashboard` | Yassir-like dispatch: GPS, Strict Driver Lock (one active order at a time), available orders polled 20s, accept button, my active orders with map button + status transitions, payment summary modal on completion |
 | `/order-details` | OpenStreetMap screen for drivers (Leaflet.js + OSRM routing): live route polyline (driver → pickup → dropoff), color-coded markers, order info, call client, Start Navigation button |
@@ -50,9 +50,13 @@ appId: "1:771075643005:web:ffdb5f08a27f0190dac314"
 ```
 
 ### Firestore Collections
-- `users/{uid}` — uid, email, name, phone, role (client|partner|admin), isApproved, needsTruckSetup, createdAt
-- `partners/{uid}` — uid, truckType, licensePlate, status
-- `orders/{id}` — orderId, clientName, clientPhone, pickupLocation {address, lat, lng}, dropoffLocation {address, lat, lng}, estimatedPrice (DZD), paymentMethod (cash|card|mobile_payment), status (searching|accepted|arrived|in_transit|completed), driverId (null until accepted), timestamp, updatedAt
+- `users/{uid}` — uid, email, name, phone, role (client|partner|admin), isApproved, needsTruckSetup, entityType, coverageScope, serviceSpecialization, createdAt
+- `partners/{uid}` — uid, entityType (company|freelance), truckType, licensePlate, workersProvided (bool), numberOfWorkers (int), serviceSpecialization (furniture_assembly|transport_only), coverageScope (local|national), status (pending|active)
+- `orders/{id}` — orderId, clientName, clientPhone, pickupLocation {address, lat, lng}, dropoffLocation {address, lat, lng}, pickupWilayaCode, pickupCommuneCode, pickupWilayaName, pickupCommuneName, deliveryWilayaCode, deliveryCommuneCode, deliveryWilayaName, deliveryCommuneName, truckTypeNeeded, needWorkers (bool), numberOfWorkersNeeded (int), servicePreference (assembly|transport_only), estimatedPrice (DZD), paymentMethod (cash|card|mobile_payment), status (pending|searching|accepted|arrived|in_transit|completed), driverId (null until accepted), timestamp, updatedAt
+
+### New Data Libraries
+- `lib/algeria-data.ts` — All 58 Algerian wilayas with communes (code, Arabic, French, English names)
+- `components/WilayaSelector.tsx` — Hierarchical modal selector: search autocomplete + Wilaya → Commune navigation
 
 ### Auth Routing (AuthContext + _layout.tsx)
 - `AuthRedirect` component auto-routes authenticated users to their correct dashboard

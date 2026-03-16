@@ -25,29 +25,50 @@ import { db } from "@/lib/firebase";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import Colors from "@/constants/colors";
+import WilayaSelector, { type WilayaSelection } from "@/components/WilayaSelector";
 
 const C = Colors.light;
 
 export default function HomeScreen() {
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const { user, profile } = useAuth();
   const insets = useSafeAreaInsets();
   const topInset = Platform.OS === "web" ? 67 : insets.top;
   const bottomInset = Platform.OS === "web" ? 34 : insets.bottom;
 
-  const [form, setForm] = useState({ name: "", phone: "", pickup: "", delivery: "" });
+  const [form, setForm] = useState({ name: "", phone: "" });
+  const [pickupWilaya, setPickupWilaya] = useState<WilayaSelection | null>(null);
+  const [deliveryWilaya, setDeliveryWilaya] = useState<WilayaSelection | null>(null);
+  const [truckTypeNeeded, setTruckTypeNeeded] = useState("");
+  const [needWorkers, setNeedWorkers] = useState<boolean | null>(null);
+  const [numberOfWorkersNeeded, setNumberOfWorkersNeeded] = useState("");
+  const [servicePreference, setServicePreference] = useState<"assembly" | "transport_only" | "">("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<typeof form>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState("");
 
+  const TRUCK_TYPES_FORM =
+    language === "ar"
+      ? ["شاحنة صغيرة", "شاحنة متوسطة", "شاحنة كبيرة", "فان"]
+      : language === "fr"
+      ? ["Petit camion", "Camion moyen", "Grand camion", "Fourgonnette"]
+      : ["Small Truck", "Medium Truck", "Large Truck", "Van"];
+
+  const clearError = (key: string) =>
+    setErrors((e) => { const next = { ...e }; delete next[key]; return next; });
+
   const validate = () => {
-    const errs: Partial<typeof form> = {};
+    const errs: Record<string, string> = {};
     if (!form.name.trim()) errs.name = t.nameRequired;
     if (!form.phone.trim()) errs.phone = t.phoneRequired;
     else if (!/^[\d\s\+\-]{8,}$/.test(form.phone.trim())) errs.phone = t.phoneInvalid;
-    if (!form.pickup.trim()) errs.pickup = t.pickupRequired;
-    if (!form.delivery.trim()) errs.delivery = t.deliveryRequired;
+    if (!pickupWilaya) errs.pickup = t.wilayaRequired;
+    if (!deliveryWilaya) errs.delivery = t.wilayaRequired;
+    if (!truckTypeNeeded) errs.truckTypeNeeded = t.truckTypeNeededRequired;
+    if (needWorkers === null) errs.needWorkers = t.requiredField;
+    if (needWorkers === true && !numberOfWorkersNeeded.trim()) errs.numberOfWorkersNeeded = t.numberOfWorkersRequired;
+    if (!servicePreference) errs.servicePreference = t.requiredField;
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -67,8 +88,20 @@ export default function HomeScreen() {
       await withTimeout(addDoc(collection(db, "orders"), {
         name: form.name.trim(),
         phone: form.phone.trim(),
-        pickup: form.pickup.trim(),
-        delivery: form.delivery.trim(),
+        pickup: pickupWilaya ? `${pickupWilaya.wilayaName} - ${pickupWilaya.communeName}` : "",
+        delivery: deliveryWilaya ? `${deliveryWilaya.wilayaName} - ${deliveryWilaya.communeName}` : "",
+        pickupWilayaCode: pickupWilaya?.wilayaCode ?? "",
+        pickupCommuneCode: pickupWilaya?.communeCode ?? "",
+        pickupWilayaName: pickupWilaya?.wilayaName ?? "",
+        pickupCommuneName: pickupWilaya?.communeName ?? "",
+        deliveryWilayaCode: deliveryWilaya?.wilayaCode ?? "",
+        deliveryCommuneCode: deliveryWilaya?.communeCode ?? "",
+        deliveryWilayaName: deliveryWilaya?.wilayaName ?? "",
+        deliveryCommuneName: deliveryWilaya?.communeName ?? "",
+        truckTypeNeeded,
+        needWorkers: needWorkers ?? false,
+        numberOfWorkersNeeded: needWorkers ? parseInt(numberOfWorkersNeeded, 10) || 0 : 0,
+        servicePreference,
         status: "pending",
         clientId: user?.uid || "anonymous",
         createdAt: new Date().toISOString(),
@@ -91,7 +124,13 @@ export default function HomeScreen() {
   };
 
   const handleReset = () => {
-    setForm({ name: "", phone: "", pickup: "", delivery: "" });
+    setForm({ name: "", phone: "" });
+    setPickupWilaya(null);
+    setDeliveryWilaya(null);
+    setTruckTypeNeeded("");
+    setNeedWorkers(null);
+    setNumberOfWorkersNeeded("");
+    setServicePreference("");
     setErrors({});
     setSubmitted(false);
   };
@@ -283,7 +322,9 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{t.requestEstimate}</Text>
           </View>
           <View style={styles.formCard}>
-            {submitted ? (
+            {!user ? (
+              <AuthGate t={t} isRTL={isRTL} />
+            ) : submitted ? (
               <SuccessView onReset={handleReset} t={t} isRTL={isRTL} />
             ) : (
               <>
@@ -291,7 +332,7 @@ export default function HomeScreen() {
                   label={t.fullName}
                   icon="person"
                   value={form.name}
-                  onChangeText={(v) => { setForm((f) => ({ ...f, name: v })); setErrors((e) => ({ ...e, name: undefined })); }}
+                  onChangeText={(v) => { setForm((f) => ({ ...f, name: v })); clearError("name"); }}
                   placeholder={isRTL ? "أحمد بن علي" : "Ahmed Benali"}
                   error={errors.name}
                   isRTL={isRTL}
@@ -300,30 +341,161 @@ export default function HomeScreen() {
                   label={t.phone}
                   icon="call"
                   value={form.phone}
-                  onChangeText={(v) => { setForm((f) => ({ ...f, phone: v })); setErrors((e) => ({ ...e, phone: undefined })); }}
+                  onChangeText={(v) => { setForm((f) => ({ ...f, phone: v })); clearError("phone"); }}
                   placeholder="0550 123 456"
                   keyboardType="phone-pad"
                   error={errors.phone}
                   isRTL={isRTL}
                 />
-                <FormField
-                  label={t.pickupAddress}
-                  icon="location"
-                  value={form.pickup}
-                  onChangeText={(v) => { setForm((f) => ({ ...f, pickup: v })); setErrors((e) => ({ ...e, pickup: undefined })); }}
-                  placeholder={isRTL ? "الشارع، الحي، المدينة" : "Rue, Quartier, Ville"}
+
+                {/* Location Section */}
+                <View style={styles.formSectionHeader}>
+                  <Ionicons name="location" size={16} color={C.blue} />
+                  <Text style={[styles.formSectionTitle, isRTL && styles.textRTL]}>{t.locationDetails}</Text>
+                </View>
+
+                <WilayaSelector
+                  label={t.wilayaPickup}
+                  placeholder={t.wilayaPickupPlaceholder}
+                  value={pickupWilaya}
+                  onChange={(sel) => { setPickupWilaya(sel); clearError("pickup"); }}
                   error={errors.pickup}
                   isRTL={isRTL}
+                  language={language}
                 />
-                <FormField
-                  label={t.deliveryAddress}
-                  icon="flag"
-                  value={form.delivery}
-                  onChangeText={(v) => { setForm((f) => ({ ...f, delivery: v })); setErrors((e) => ({ ...e, delivery: undefined })); }}
-                  placeholder={isRTL ? "الشارع، الحي، المدينة" : "Rue, Quartier, Ville"}
+
+                <WilayaSelector
+                  label={t.wilayaDelivery}
+                  placeholder={t.wilayaDeliveryPlaceholder}
+                  value={deliveryWilaya}
+                  onChange={(sel) => { setDeliveryWilaya(sel); clearError("delivery"); }}
                   error={errors.delivery}
                   isRTL={isRTL}
+                  language={language}
                 />
+
+                {/* Service Details Section */}
+                <View style={styles.formSectionHeader}>
+                  <Ionicons name="construct" size={16} color={C.blue} />
+                  <Text style={[styles.formSectionTitle, isRTL && styles.textRTL]}>{t.serviceDetails}</Text>
+                </View>
+
+                {/* Truck Type Needed */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formGroupLabel, isRTL && styles.textRTL]}>{t.truckTypeNeeded}</Text>
+                  <View style={[styles.chipRow, isRTL && styles.chipRowRTL]}>
+                    {TRUCK_TYPES_FORM.map((type) => (
+                      <Pressable
+                        key={type}
+                        onPress={() => { setTruckTypeNeeded(type); clearError("truckTypeNeeded"); Haptics.selectionAsync(); }}
+                        style={[
+                          styles.chip,
+                          truckTypeNeeded === type && styles.chipSelected,
+                          !!errors.truckTypeNeeded && styles.chipError,
+                        ]}
+                      >
+                        <MaterialCommunityIcons name="truck" size={14} color={truckTypeNeeded === type ? "#fff" : C.textSecondary} />
+                        <Text style={[styles.chipText, truckTypeNeeded === type && styles.chipTextSelected]}>{type}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {!!errors.truckTypeNeeded && (
+                    <View style={[styles.inlineErrorRow, isRTL && styles.rowRTL]}>
+                      <Ionicons name="alert-circle" size={12} color={C.error} />
+                      <Text style={styles.inlineErrorText}>{errors.truckTypeNeeded}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Worker Requirement */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formGroupLabel, isRTL && styles.textRTL]}>{t.workerRequirement}</Text>
+                  <View style={[styles.chipRow, isRTL && styles.chipRowRTL]}>
+                    {(
+                      [
+                        { val: true, label: t.yes, icon: "people" },
+                        { val: false, label: t.no, icon: "person" },
+                      ] as { val: boolean; label: string; icon: string }[]
+                    ).map((opt) => (
+                      <Pressable
+                        key={String(opt.val)}
+                        onPress={() => {
+                          setNeedWorkers(opt.val);
+                          if (!opt.val) setNumberOfWorkersNeeded("");
+                          clearError("needWorkers");
+                          Haptics.selectionAsync();
+                        }}
+                        style={[
+                          styles.chip,
+                          needWorkers === opt.val && styles.chipSelected,
+                          !!errors.needWorkers && styles.chipError,
+                        ]}
+                      >
+                        <Ionicons name={opt.icon as any} size={14} color={needWorkers === opt.val ? "#fff" : C.textSecondary} />
+                        <Text style={[styles.chipText, needWorkers === opt.val && styles.chipTextSelected]}>{opt.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {!!errors.needWorkers && (
+                    <View style={[styles.inlineErrorRow, isRTL && styles.rowRTL]}>
+                      <Ionicons name="alert-circle" size={12} color={C.error} />
+                      <Text style={styles.inlineErrorText}>{errors.needWorkers}</Text>
+                    </View>
+                  )}
+
+                  {needWorkers === true && (
+                    <View style={{ marginTop: 10 }}>
+                      <FormField
+                        label={t.needWorkers}
+                        icon="people"
+                        value={numberOfWorkersNeeded}
+                        onChangeText={(v) => { setNumberOfWorkersNeeded(v.replace(/[^0-9]/g, "")); clearError("numberOfWorkersNeeded"); }}
+                        placeholder="1 - 10"
+                        keyboardType="number-pad"
+                        error={errors.numberOfWorkersNeeded}
+                        isRTL={isRTL}
+                      />
+                    </View>
+                  )}
+                </View>
+
+                {/* Service Preference */}
+                <View style={styles.formGroup}>
+                  <Text style={[styles.formGroupLabel, isRTL && styles.textRTL]}>{t.servicePreference}</Text>
+                  <View style={[styles.vertChips]}>
+                    {(
+                      [
+                        { val: "assembly", label: t.assemblyNeeded, icon: "build" },
+                        { val: "transport_only", label: t.assemblyNotNeeded, icon: "car" },
+                      ] as { val: "assembly" | "transport_only"; label: string; icon: string }[]
+                    ).map((opt) => (
+                      <Pressable
+                        key={opt.val}
+                        onPress={() => { setServicePreference(opt.val); clearError("servicePreference"); Haptics.selectionAsync(); }}
+                        style={[
+                          styles.vertChip,
+                          isRTL && styles.rowRTL,
+                          servicePreference === opt.val && styles.vertChipSelected,
+                          !!errors.servicePreference && styles.chipError,
+                        ]}
+                      >
+                        <Ionicons name={opt.icon as any} size={16} color={servicePreference === opt.val ? C.blue : C.textSecondary} style={isRTL ? { marginLeft: 10 } : { marginRight: 10 }} />
+                        <Text style={[styles.vertChipText, servicePreference === opt.val && styles.vertChipTextSelected, isRTL && styles.textRTL]}>
+                          {opt.label}
+                        </Text>
+                        {servicePreference === opt.val && (
+                          <Ionicons name="checkmark-circle" size={18} color={C.blue} style={isRTL ? { marginRight: "auto" } : { marginLeft: "auto" }} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                  {!!errors.servicePreference && (
+                    <View style={[styles.inlineErrorRow, isRTL && styles.rowRTL]}>
+                      <Ionicons name="alert-circle" size={12} color={C.error} />
+                      <Text style={styles.inlineErrorText}>{errors.servicePreference}</Text>
+                    </View>
+                  )}
+                </View>
 
                 <Pressable
                   onPress={handleSubmit}
@@ -463,6 +635,54 @@ function SuccessView({
   );
 }
 
+function AuthGate({
+  t,
+  isRTL,
+}: {
+  t: { loginRequired: string; loginOrSignupPrompt: string; goToLogin: string; goToSignup: string };
+  isRTL: boolean;
+}) {
+  return (
+    <View style={styles.authGate}>
+      <LinearGradient
+        colors={[C.blue + "20", C.orange + "15"]}
+        style={styles.authGateIcon}
+      >
+        <Ionicons name="lock-closed" size={32} color={C.blue} />
+      </LinearGradient>
+      <Text style={[styles.authGateTitle, isRTL && styles.textRTL]}>
+        {t.loginRequired}
+      </Text>
+      <Text style={[styles.authGateDesc, isRTL && styles.textRTL]}>
+        {t.loginOrSignupPrompt}
+      </Text>
+      <View style={[styles.authGateBtns, isRTL && styles.authGateBtnsRTL]}>
+        <Pressable
+          onPress={() => router.push("/login")}
+          style={styles.authGateLoginBtn}
+        >
+          <LinearGradient
+            colors={[C.blue, C.blueLight]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.authGateLoginGradient}
+          >
+            <Ionicons name="log-in-outline" size={16} color="#fff" />
+            <Text style={styles.authGateLoginText}>{t.goToLogin}</Text>
+          </LinearGradient>
+        </Pressable>
+        <Pressable
+          onPress={() => router.push("/signup")}
+          style={styles.authGateSignupBtn}
+        >
+          <Ionicons name="person-add-outline" size={16} color={C.blue} />
+          <Text style={styles.authGateSignupText}>{t.goToSignup}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 function FormField({
   label,
   icon,
@@ -478,7 +698,7 @@ function FormField({
   value: string;
   onChangeText: (v: string) => void;
   placeholder: string;
-  keyboardType?: "default" | "phone-pad";
+  keyboardType?: "default" | "phone-pad" | "number-pad";
   error?: string;
   isRTL?: boolean;
 }) {
@@ -663,4 +883,94 @@ const styles = StyleSheet.create({
   footerLoc: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.textSecondary },
   footerCopy: { fontSize: 10, fontFamily: "Inter_400Regular", color: "#B0BEC5", marginTop: 2 },
   textRTL: { textAlign: "right" },
+  rowRTL: { flexDirection: "row-reverse" },
+  formSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 8,
+    marginBottom: 14,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+  formSectionTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.blue },
+  formGroup: { marginBottom: 14 },
+  formGroupLabel: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: C.text, marginBottom: 10 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chipRowRTL: { flexDirection: "row-reverse", flexWrap: "wrap" },
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: C.inputBg,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  chipSelected: { backgroundColor: C.blue, borderColor: C.blue },
+  chipError: { borderColor: C.error },
+  chipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: C.textSecondary },
+  chipTextSelected: { color: "#fff" },
+  vertChips: { gap: 8 },
+  vertChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: C.inputBg,
+    borderRadius: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    borderWidth: 1.5,
+    borderColor: "transparent",
+  },
+  vertChipSelected: { backgroundColor: "#EFF6FF", borderColor: C.blue },
+  vertChipText: { fontSize: 14, fontFamily: "Inter_400Regular", color: C.textSecondary, flex: 1 },
+  vertChipTextSelected: { color: C.blue, fontFamily: "Inter_500Medium" },
+  inlineErrorRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+  inlineErrorText: { fontSize: 12, fontFamily: "Inter_400Regular", color: C.error },
+  authGate: { alignItems: "center", paddingVertical: 28, gap: 14 },
+  authGateIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  authGateTitle: { fontSize: 18, fontFamily: "Inter_700Bold", color: C.text },
+  authGateDesc: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: C.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 8,
+  },
+  authGateBtns: { flexDirection: "row", gap: 10, width: "100%" },
+  authGateBtnsRTL: { flexDirection: "row-reverse" },
+  authGateLoginBtn: { flex: 1 },
+  authGateLoginGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 14,
+    paddingVertical: 13,
+  },
+  authGateLoginText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  authGateSignupBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 14,
+    paddingVertical: 13,
+    borderWidth: 1.5,
+    borderColor: C.blue,
+    backgroundColor: "#fff",
+  },
+  authGateSignupText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: C.blue },
 });

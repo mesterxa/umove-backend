@@ -139,6 +139,62 @@ export type Translations = {
   paymentMethod: string;
   pullToRefresh: string;
   autoRefresh: string;
+  entityType: string;
+  entityTypeRequired: string;
+  company: string;
+  freelance: string;
+  workersProvided: string;
+  numberOfWorkers: string;
+  numberOfWorkersRequired: string;
+  numberOfWorkersInvalid: string;
+  serviceSpecialization: string;
+  serviceSpecRequired: string;
+  furnitureAssemblyService: string;
+  transportOnly: string;
+  coverageScope: string;
+  coverageScopeRequired: string;
+  local: string;
+  national: string;
+  localDesc: string;
+  nationalDesc: string;
+  partnerSetupTitle: string;
+  partnerSetupSub: string;
+  registerPartner: string;
+  yes: string;
+  no: string;
+  wilayaPickup: string;
+  wilayaDelivery: string;
+  wilayaPickupPlaceholder: string;
+  wilayaDeliveryPlaceholder: string;
+  wilayaRequired: string;
+  communeRequired: string;
+  truckTypeNeeded: string;
+  truckTypeNeededRequired: string;
+  workerRequirement: string;
+  needWorkers: string;
+  numberOfWorkersNeeded: string;
+  servicePreference: string;
+  assemblyNeeded: string;
+  assemblyNotNeeded: string;
+  serviceDetails: string;
+  locationDetails: string;
+  selfiePhoto: string;
+  drivingLicensePhoto: string;
+  vehiclePhoto: string;
+  tapToUpload: string;
+  changePhoto: string;
+  uploadingPhoto: string;
+  photoRequired: string;
+  verificationPhotos: string;
+  verificationPhotosDesc: string;
+  reject: string;
+  approved: string;
+  rejected: string;
+  pendingPartners: string;
+  loginRequired: string;
+  loginOrSignupPrompt: string;
+  goToLogin: string;
+  goToSignup: string;
 };
 
 const ar: Translations = {
@@ -280,6 +336,62 @@ const ar: Translations = {
   paymentMethod: "طريقة الدفع",
   pullToRefresh: "اسحب للتحديث",
   autoRefresh: "تحديث تلقائي كل 20 ثانية",
+  entityType: "نوع الكيان",
+  entityTypeRequired: "نوع الكيان مطلوب",
+  company: "شركة",
+  freelance: "ناقل حر",
+  workersProvided: "توفير عمال",
+  numberOfWorkers: "عدد العمال",
+  numberOfWorkersRequired: "عدد العمال مطلوب",
+  numberOfWorkersInvalid: "أدخل رقماً صحيحاً (1-50)",
+  serviceSpecialization: "تخصص الخدمة",
+  serviceSpecRequired: "تخصص الخدمة مطلوب",
+  furnitureAssemblyService: "نقل + تفكيك وتركيب الأثاث",
+  transportOnly: "نقل فقط",
+  coverageScope: "نطاق التغطية",
+  coverageScopeRequired: "نطاق التغطية مطلوب",
+  local: "محلي - داخل الولاية",
+  national: "وطني - بين الولايات",
+  localDesc: "داخل الولاية فقط",
+  nationalDesc: "بين الولايات",
+  partnerSetupTitle: "إعداد ملف الشريك",
+  partnerSetupSub: "أكمل بيانات نشاطك للانضمام إلى شبكة شركائنا",
+  registerPartner: "تسجيل كشريك",
+  yes: "نعم",
+  no: "لا",
+  wilayaPickup: "موقع الانطلاق (الولاية / البلدية)",
+  wilayaDelivery: "موقع الوصول (الولاية / البلدية)",
+  wilayaPickupPlaceholder: "اختر الولاية والبلدية",
+  wilayaDeliveryPlaceholder: "اختر الولاية والبلدية",
+  wilayaRequired: "الولاية مطلوبة",
+  communeRequired: "البلدية مطلوبة",
+  truckTypeNeeded: "نوع الشاحنة المطلوبة",
+  truckTypeNeededRequired: "نوع الشاحنة مطلوب",
+  workerRequirement: "هل تحتاج عمالاً للنقل؟",
+  needWorkers: "عدد العمال المطلوبين",
+  numberOfWorkersNeeded: "عدد العمال",
+  servicePreference: "هل تحتاج خدمة تفكيك وتركيب؟",
+  assemblyNeeded: "نعم - مع تفكيك وتركيب",
+  assemblyNotNeeded: "لا - نقل فقط",
+  serviceDetails: "تفاصيل الخدمة",
+  locationDetails: "تفاصيل الموقع",
+  selfiePhoto: "صورة شخصية (سيلفي)",
+  drivingLicensePhoto: "صورة رخصة القيادة",
+  vehiclePhoto: "صورة المركبة (من الأمام مع اللوحة)",
+  tapToUpload: "اضغط لرفع الصورة",
+  changePhoto: "تغيير الصورة",
+  uploadingPhoto: "جاري الرفع...",
+  photoRequired: "الصورة مطلوبة",
+  verificationPhotos: "صور التحقق",
+  verificationPhotosDesc: "ارفع الصور المطلوبة للتحقق من هويتك وهوية مركبتك",
+  reject: "رفض",
+  approved: "مُعتمد",
+  rejected: "مرفوض",
+  pendingPartners: "الشركاء قيد المراجعة",
+  loginRequired: "يجب تسجيل الدخول",
+  loginOrSignupPrompt: "يجب تسجيل الدخول أو إنشاء حساب لإرسال طلب تقدير السعر.",
+  goToLogin: "تسجيل الدخول",
+  goToSignup: "إنشاء حساب",
 };
 
 const fr: Translations = {
@@ -421,6 +533,62 @@ const fr: Translations = {
   paymentMethod: "Moyen de paiement",
   pullToRefresh: "Tirer pour actualiser",
   autoRefresh: "Mise à jour toutes les 20 secondes",
+  entityType: "Type d'entité",
+  entityTypeRequired: "Le type d'entité est requis",
+  company: "Société",
+  freelance: "Transporteur indépendant",
+  workersProvided: "Personnel fourni",
+  numberOfWorkers: "Nombre de travailleurs",
+  numberOfWorkersRequired: "Le nombre de travailleurs est requis",
+  numberOfWorkersInvalid: "Entrez un nombre valide (1-50)",
+  serviceSpecialization: "Spécialisation du service",
+  serviceSpecRequired: "La spécialisation est requise",
+  furnitureAssemblyService: "Transport + Démontage & Montage",
+  transportOnly: "Transport uniquement",
+  coverageScope: "Zone de couverture",
+  coverageScopeRequired: "La zone de couverture est requise",
+  local: "Local - Dans la wilaya",
+  national: "National - Inter-wilayas",
+  localDesc: "Dans la wilaya uniquement",
+  nationalDesc: "Entre les wilayas",
+  partnerSetupTitle: "Configuration du profil",
+  partnerSetupSub: "Complétez vos informations pour rejoindre notre réseau",
+  registerPartner: "S'inscrire comme partenaire",
+  yes: "Oui",
+  no: "Non",
+  wilayaPickup: "Lieu de départ (Wilaya / Commune)",
+  wilayaDelivery: "Lieu d'arrivée (Wilaya / Commune)",
+  wilayaPickupPlaceholder: "Choisir wilaya et commune",
+  wilayaDeliveryPlaceholder: "Choisir wilaya et commune",
+  wilayaRequired: "La wilaya est requise",
+  communeRequired: "La commune est requise",
+  truckTypeNeeded: "Type de camion requis",
+  truckTypeNeededRequired: "Le type de camion est requis",
+  workerRequirement: "Avez-vous besoin de personnel ?",
+  needWorkers: "Nombre de travailleurs nécessaires",
+  numberOfWorkersNeeded: "Nombre de travailleurs",
+  servicePreference: "Besoin de montage/démontage ?",
+  assemblyNeeded: "Oui - avec montage/démontage",
+  assemblyNotNeeded: "Non - transport uniquement",
+  serviceDetails: "Détails du service",
+  locationDetails: "Détails de l'emplacement",
+  selfiePhoto: "Photo Selfie / Visage",
+  drivingLicensePhoto: "Photo du Permis de Conduire",
+  vehiclePhoto: "Photo du Véhicule (face avant + plaque)",
+  tapToUpload: "Appuyer pour télécharger",
+  changePhoto: "Changer la photo",
+  uploadingPhoto: "Téléchargement...",
+  photoRequired: "Photo requise",
+  verificationPhotos: "Photos de vérification",
+  verificationPhotosDesc: "Téléchargez les photos requises pour vérifier votre identité et votre véhicule",
+  reject: "Refuser",
+  approved: "Approuvé",
+  rejected: "Refusé",
+  pendingPartners: "Partenaires en attente",
+  loginRequired: "Connexion requise",
+  loginOrSignupPrompt: "Vous devez être connecté pour envoyer une demande de devis.",
+  goToLogin: "Se connecter",
+  goToSignup: "Créer un compte",
 };
 
 const en: Translations = {
@@ -562,6 +730,62 @@ const en: Translations = {
   paymentMethod: "Payment Method",
   pullToRefresh: "Pull to refresh",
   autoRefresh: "Auto-refreshes every 20 seconds",
+  entityType: "Entity Type",
+  entityTypeRequired: "Entity type is required",
+  company: "Company",
+  freelance: "Freelance Carrier",
+  workersProvided: "Workers Provided",
+  numberOfWorkers: "Number of Workers",
+  numberOfWorkersRequired: "Number of workers is required",
+  numberOfWorkersInvalid: "Enter a valid number (1-50)",
+  serviceSpecialization: "Service Specialization",
+  serviceSpecRequired: "Service specialization is required",
+  furnitureAssemblyService: "Transport + Furniture Disassembly & Assembly",
+  transportOnly: "Transport Only",
+  coverageScope: "Coverage Scope",
+  coverageScopeRequired: "Coverage scope is required",
+  local: "Local - Within Wilaya",
+  national: "National - Inter-Wilaya",
+  localDesc: "Within the wilaya only",
+  nationalDesc: "Between wilayas",
+  partnerSetupTitle: "Partner Profile Setup",
+  partnerSetupSub: "Complete your business details to join our partner network",
+  registerPartner: "Register as Partner",
+  yes: "Yes",
+  no: "No",
+  wilayaPickup: "Pickup Location (Wilaya / Commune)",
+  wilayaDelivery: "Delivery Location (Wilaya / Commune)",
+  wilayaPickupPlaceholder: "Select wilaya and commune",
+  wilayaDeliveryPlaceholder: "Select wilaya and commune",
+  wilayaRequired: "Wilaya is required",
+  communeRequired: "Commune is required",
+  truckTypeNeeded: "Truck Type Needed",
+  truckTypeNeededRequired: "Truck type is required",
+  workerRequirement: "Do you need workers?",
+  needWorkers: "Number of workers needed",
+  numberOfWorkersNeeded: "Number of workers",
+  servicePreference: "Assembly/Disassembly needed?",
+  assemblyNeeded: "Yes - with assembly/disassembly",
+  assemblyNotNeeded: "No - transport only",
+  serviceDetails: "Service Details",
+  locationDetails: "Location Details",
+  selfiePhoto: "Selfie / Face Photo",
+  drivingLicensePhoto: "Driving License Photo",
+  vehiclePhoto: "Vehicle Photo (front view + plate)",
+  tapToUpload: "Tap to Upload",
+  changePhoto: "Change Photo",
+  uploadingPhoto: "Uploading...",
+  photoRequired: "Photo is required",
+  verificationPhotos: "Verification Photos",
+  verificationPhotosDesc: "Upload required photos to verify your identity and vehicle",
+  reject: "Reject",
+  approved: "Approved",
+  rejected: "Rejected",
+  pendingPartners: "Pending Partners",
+  loginRequired: "Login Required",
+  loginOrSignupPrompt: "You must be logged in to submit a quote request.",
+  goToLogin: "Sign In",
+  goToSignup: "Create Account",
 };
 
 export const translations: Record<Language, Translations> = { ar, fr, en };
